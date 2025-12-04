@@ -73,6 +73,8 @@ export interface ServiceRequest {
   updatedAt?: string;
   proposalAmount?: string;
   proposalSent?: boolean;
+  proposalId?: string; // Added
+  pdfPath?: string;    // Added
   attachments?: any[];
 }
 
@@ -97,8 +99,9 @@ export interface Client {
   company: string;
   industry: string;
   phone?: string;
-  status: 'active' | 'inactive' | 'pending';
+  status?: 'active' | 'inactive' | 'pending';
   projectsCount: number;
+  activeProjects?: number;
   totalSpent?: number;
   joinedDate: string;
   lastActivity?: string;
@@ -151,7 +154,7 @@ export interface Project {
   startDate?: string;
   deadline?: string;
   ecd?: string;
-  estimatedCompletion?: string; // Added to fix error
+  estimatedCompletion?: string;
   budget?: string | number;
   spent?: number;
   description?: string;

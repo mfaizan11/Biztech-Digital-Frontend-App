@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, FolderOpen, ArrowRight, AlertCircle, Download, Check, Menu, X, Loader2, LogOut, User as UserIcon } from 'lucide-react';
+import { Plus, FileText, FolderOpen, ArrowRight, AlertCircle, Download, Check, Loader2 } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAuth } from '../contexts/AuthContext';
 import { ServiceRequest } from '../types';
@@ -9,8 +9,7 @@ import { toast } from 'sonner';
 
 export function ClientDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const { user } = useAuth();
   
   // State for real data
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
@@ -28,38 +27,73 @@ export function ClientDashboard() {
     }
   };
 
+  const fetchRequests = async () => {
+    try {
+      const response = await api.get('/requests');
+      
+      const mappedRequests = response.data.map((req: any) => ({
+        id: req.id.toString(),
+        client: user?.name || '',
+        clientEmail: user?.email || '',
+        category: req.Category?.name || 'General Service',
+        dateSubmitted: new Date(req.createdAt).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric'
+        }),
+        createdAt: req.createdAt,
+        status: mapBackendStatus(req.status),
+        details: req.details,
+        proposalAmount: req.Proposal ? `$${req.Proposal.totalAmount}` : undefined,
+        proposalId: req.Proposal?.id,
+        pdfPath: req.Proposal?.pdfPath
+      }));
+
+      setRequests(mappedRequests);
+    } catch (error) {
+      console.error("Failed to fetch requests:", error);
+      toast.error("Could not load your requests. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        const response = await api.get('/requests');
-        
-        const mappedRequests = response.data.map((req: any) => ({
-          id: req.id.toString(),
-          client: user?.name || '',
-          clientEmail: user?.email || '',
-          category: req.Category?.name || 'General Service',
-          dateSubmitted: new Date(req.createdAt).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-          }),
-          createdAt: req.createdAt,
-          status: mapBackendStatus(req.status),
-          details: req.details,
-          proposalAmount: req.Proposal ? `$${req.Proposal.totalAmount}` : undefined
-        }));
-
-        setRequests(mappedRequests);
-      } catch (error) {
-        console.error("Failed to fetch requests:", error);
-        toast.error("Could not load your requests. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (user) {
       fetchRequests();
     }
   }, [user]);
+
+  const handleViewPdf = (pdfPath?: string) => {
+    if (!pdfPath) {
+      toast.error("Proposal PDF not available");
+      return;
+    }
+    
+    // Construct proper URL
+    // import.meta.env.VITE_API_URL is typically "http://localhost:3000/api/v1"
+    // Backend serves static files at root "/uploads" -> "http://localhost:3000/uploads/..."
+    const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api/v1', '') 
+      : 'http://localhost:3000';
+    
+    const cleanPath = pdfPath.replace(/\\/g, '/'); // Fix Windows backslashes
+    const fullUrl = `${baseUrl}/${cleanPath}`;
+    
+    window.open(fullUrl, '_blank');
+  };
+
+  const handleAcceptProposal = async (proposalId?: string) => {
+    if (!proposalId) return;
+    
+    if(!window.confirm("Are you sure you want to accept this proposal? A new project will be created.")) return;
+
+    try {
+      await api.patch(`/proposals/${proposalId}/accept`);
+      toast.success("Proposal Accepted! Project started.");
+      fetchRequests(); // Refresh data
+    } catch (error) {
+      toast.error("Failed to accept proposal");
+    }
+  };
 
   const actionRequiredRequest = requests.find(r => r.status === 'action-required');
   const hasActionRequired = !!actionRequiredRequest;
@@ -117,11 +151,17 @@ export function ClientDashboard() {
                       {actionRequiredRequest.category} - <span className="font-semibold text-[#0D1B2A]">{actionRequiredRequest.proposalAmount || 'Price TBD'}</span>
                     </p>
                     <div className="flex gap-3">
-                      <button className="bg-white border-2 border-[#0D1B2A] text-[#0D1B2A] px-6 py-2.5 rounded-lg hover:bg-[#0D1B2A] hover:text-white transition-all font-medium flex items-center gap-2 h-[44px]">
+                      <button 
+                        onClick={() => handleViewPdf(actionRequiredRequest.pdfPath)}
+                        className="bg-white border-2 border-[#0D1B2A] text-[#0D1B2A] px-6 py-2.5 rounded-lg hover:bg-[#0D1B2A] hover:text-white transition-all font-medium flex items-center gap-2 h-[44px]"
+                      >
                         <Download size={18} />
                         View PDF
                       </button>
-                      <button className="bg-[#2EC4B6] text-white px-6 py-2.5 rounded-lg hover:bg-[#26a599] transition-all font-medium flex items-center gap-2 h-[44px]">
+                      <button 
+                        onClick={() => handleAcceptProposal(actionRequiredRequest.proposalId)}
+                        className="bg-[#2EC4B6] text-white px-6 py-2.5 rounded-lg hover:bg-[#26a599] transition-all font-medium flex items-center gap-2 h-[44px]"
+                      >
                         <Check size={18} />
                         Accept Quote
                       </button>
@@ -151,12 +191,13 @@ export function ClientDashboard() {
                       <th className="text-left py-3 px-4 text-sm font-semibold text-[#4A5568]">Service Category</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-[#4A5568]">Date Submitted</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-[#4A5568]">Status</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-[#4A5568]">Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {requests.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="py-8 text-center text-[#4A5568]">
+                        <td colSpan={4} className="py-8 text-center text-[#4A5568]">
                           No requests found. Start a new one!
                         </td>
                       </tr>
@@ -171,6 +212,16 @@ export function ClientDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             <StatusBadge status={request.status} />
+                          </td>
+                          <td className="py-4 px-4">
+                            {request.pdfPath && (
+                              <button 
+                                onClick={() => handleViewPdf(request.pdfPath)}
+                                className="text-sm text-[#3498DB] hover:underline flex items-center gap-1"
+                              >
+                                <FileText size={14} /> Review Quote
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))

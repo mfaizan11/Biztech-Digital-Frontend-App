@@ -1,42 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, TrendingUp, Calendar, ExternalLink, Briefcase } from 'lucide-react';
+import { ExternalLink, Briefcase, Loader2 } from 'lucide-react';
 import { StatusBadge } from '../components/StatusBadge';
 import { Project } from '../types';
+import api from '../lib/api';
+import { toast } from 'sonner';
 
 export function AgentProjects() {
   const navigate = useNavigate();
-
-  const projects: Project[] = [
-    {
-      id: '1',
-      name: 'Corporate Website Development',
-      client: 'Tech Solutions Inc',
-      category: 'Web Development',
-      status: 'in-progress',
-      progress: 65,
-      startDate: 'Oct 15, 2025',
-      estimatedCompletion: 'Dec 25, 2025',
-      budget: '$5,000',
-      milestones: [],
-      deliverables: []
-    },
-    {
-      id: '2',
-      name: 'E-commerce Platform',
-      client: 'Retail Partners LLC',
-      category: 'Web Development',
-      status: 'planning',
-      progress: 20,
-      startDate: 'Nov 1, 2025',
-      estimatedCompletion: 'Jan 15, 2026',
-      budget: '$8,500',
-      milestones: [],
-      deliverables: []
-    }
-  ];
-
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = React.useState<'all' | 'planning' | 'in-progress' | 'review' | 'completed'>('all');
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await api.get('/projects');
+        const mappedData: Project[] = res.data.map((p: any) => ({
+          id: p.id.toString(),
+          name: `Project #${p.id}`,
+          client: p.Client?.companyName || 'Unknown',
+          category: p.Request?.Category?.name || 'Service',
+          status: mapStatus(p.globalStatus),
+          progress: p.progressPercent || 0,
+          startDate: new Date(p.createdAt).toLocaleDateString(),
+          estimatedCompletion: p.ecd ? new Date(p.ecd).toLocaleDateString() : 'TBD',
+          budget: p.Request?.Proposal?.totalAmount ? `$${p.Request.Proposal.totalAmount}` : 'TBD',
+          milestones: [],
+          deliverables: []
+        }));
+        setProjects(mappedData);
+      } catch (error) {
+        toast.error("Failed to load projects");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  const mapStatus = (status: string) => {
+    const lower = status?.toLowerCase() || 'pending';
+    if (lower === 'pending') return 'planning';
+    if (lower === 'in progress') return 'in-progress';
+    if (lower === 'delivered') return 'review';
+    return lower;
+  };
 
   const filteredProjects = activeFilter === 'all' 
     ? projects 
@@ -49,6 +58,14 @@ export function AgentProjects() {
     { id: 'review', label: 'Review' },
     { id: 'completed', label: 'Completed' },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 text-[#2EC4B6] animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -66,7 +83,6 @@ export function AgentProjects() {
           <p className="text-sm text-[#4A5568] mb-2">In Progress</p>
           <p className="text-3xl font-semibold text-[#F39C12]">{projects.filter(p => p.status === 'in-progress').length}</p>
         </div>
-        {/* Add more stats as needed */}
       </div>
 
       <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
@@ -122,7 +138,7 @@ export function AgentProjects() {
 
               <div className="flex items-center justify-end">
                 <button
-                  onClick={() => navigate('/agent/project-management', { state: { projectId: project.id } })}
+                  onClick={() => navigate(`/agent/project-management/${project.id}`)}
                   className="bg-[#2EC4B6] text-white px-6 py-2.5 rounded-lg hover:bg-[#26a599] transition-all font-medium flex items-center gap-2 h-[44px]"
                 >
                   <ExternalLink size={18} />

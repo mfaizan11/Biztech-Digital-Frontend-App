@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { FileText, Download } from 'lucide-react';
 import { ServiceRequest } from '../types';
 import api from '../lib/api';
 import { toast } from 'sonner';
@@ -24,6 +24,14 @@ export function AdminRequests() {
     fetchRequests();
   }, []);
 
+  const handleViewPdf = (pdfPath: string) => {
+    const baseUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api/v1', '') 
+      : 'http://localhost:3000';
+    const fullUrl = `${baseUrl}/${pdfPath.replace(/\\/g, '/')}`;
+    window.open(fullUrl, '_blank');
+  };
+
   return (
     <>
       <div className="mb-8">
@@ -46,13 +54,14 @@ export function AdminRequests() {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#4A5568]">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#4A5568]">Agent</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-[#4A5568]">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-[#4A5568]">Proposal</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="p-8 text-center">Loading...</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center">Loading...</td></tr>
               ) : requests.length === 0 ? (
-                <tr><td colSpan={5} className="p-8 text-center">No requests found.</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center">No requests found.</td></tr>
               ) : (
                 requests.map((request: any) => (
                   <tr key={request.id} className="border-b border-gray-100 hover:bg-gray-50">
@@ -71,6 +80,18 @@ export function AdminRequests() {
                       <span className={`px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700`}>
                         {request.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {request.Proposal?.pdfPath ? (
+                        <button
+                          onClick={() => handleViewPdf(request.Proposal.pdfPath)}
+                          className="text-[#3498DB] hover:text-[#2980B9] flex items-center gap-1 text-xs font-medium"
+                        >
+                          <Download size={14} /> View PDF
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
                     </td>
                   </tr>
                 ))

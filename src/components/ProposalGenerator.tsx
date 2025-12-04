@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { FileText, DollarSign, Calendar, Send, Download, Plus, Trash2, Mail } from 'lucide-react';
+import { Save, Loader2, Plus, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '../lib/api';
 
 interface ProposalItem {
   id: string;
@@ -15,6 +16,7 @@ interface ProposalGeneratorProps {
   clientName: string;
   serviceCategory: string;
   onClose: () => void;
+  onSuccess: () => void;
 }
 
 export function ProposalGenerator({ 
@@ -22,7 +24,8 @@ export function ProposalGenerator({
   clientEmail, 
   clientName, 
   serviceCategory,
-  onClose 
+  onClose,
+  onSuccess
 }: ProposalGeneratorProps) {
   const [proposalData, setProposalData] = useState({
     title: `${serviceCategory} Proposal`,
@@ -38,7 +41,7 @@ export function ProposalGenerator({
     notes: ''
   });
 
-  const [isSending, setIsSending] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const addItem = () => {
     const newItem: ProposalItem = {
@@ -81,28 +84,30 @@ export function ProposalGenerator({
     return calculateSubtotal() + calculateTax();
   };
 
-  const generatePDF = () => {
-    toast.success('PDF generated successfully!');
-    // In a real app, this would use a library like jsPDF or react-pdf
-    console.log('Generating PDF with data:', proposalData);
-  };
+  const handleGenerate = async () => {
+    try {
+      setIsGenerating(true);
+      
+      const backendItems = proposalData.items.map(item => ({
+        description: item.description,
+        price: item.quantity * item.unitPrice 
+      }));
 
-  const sendProposal = async () => {
-    setIsSending(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      toast.success(`Proposal sent to ${clientEmail}`);
-      setIsSending(false);
+      // Only create, do NOT send email yet
+      await api.post('/proposals', {
+        requestId,
+        items: backendItems
+      });
+
+      toast.success('Proposal Generated! You can now view or send it from the dashboard.');
+      onSuccess(); // Refresh dashboard
       onClose();
-    }, 2000);
-
-    // In a real app, this would:
-    // 1. Generate PDF
-    // 2. Send email via backend API
-    // 3. Save proposal to database
-    console.log('Sending proposal to:', clientEmail);
-    console.log('Proposal data:', proposalData);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || 'Failed to generate proposal');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -112,8 +117,8 @@ export function ProposalGenerator({
         <div className="bg-gradient-to-r from-[#2EC4B6] to-[#26a599] p-6 rounded-t-2xl text-white">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-2xl font-semibold text-white mb-2">Create Proposal</h2>
-              <p className="text-white/90">Generate and send proposal to {clientName}</p>
+              <h2 className="text-2xl font-semibold text-white mb-2">Create Proposal Draft</h2>
+              <p className="text-white/90">Prepare proposal for {clientName}</p>
             </div>
             <button
               onClick={onClose}
@@ -143,8 +148,8 @@ export function ProposalGenerator({
               <input
                 type="text"
                 value={proposalData.clientName}
-                onChange={(e) => setProposalData({ ...proposalData, clientName: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2EC4B6] focus:ring-2 focus:ring-[#2EC4B6]/20"
+                readOnly
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
               />
             </div>
 
@@ -273,27 +278,15 @@ export function ProposalGenerator({
             />
           </div>
 
-          {/* Additional Notes */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-[#1A202C] mb-2">Additional Notes (Optional)</label>
-            <textarea
-              value={proposalData.notes}
-              onChange={(e) => setProposalData({ ...proposalData, notes: e.target.value })}
-              rows={3}
-              placeholder="Any additional information for the client..."
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#2EC4B6] focus:ring-2 focus:ring-[#2EC4B6]/20"
-            />
-          </div>
-
-          {/* Email Preview */}
+          {/* Email Preview Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start gap-3">
               <Mail className="text-blue-600 flex-shrink-0 mt-1" size={20} />
               <div className="flex-1">
-                <p className="text-sm font-medium text-blue-900 mb-1">Email will be sent to:</p>
+                <p className="text-sm font-medium text-blue-900 mb-1">Send to:</p>
                 <p className="text-sm text-blue-700">{clientEmail}</p>
                 <p className="text-xs text-blue-600 mt-2">
-                  The proposal PDF will be attached and the client will receive a notification.
+                  This action will generate the PDF draft. You can review and send it from the dashboard.
                 </p>
               </div>
             </div>
@@ -302,23 +295,14 @@ export function ProposalGenerator({
 
         {/* Footer Actions */}
         <div className="border-t border-gray-200 p-6 bg-gray-50 rounded-b-2xl">
-          <div className="flex gap-3">
-            <button
-              onClick={generatePDF}
-              className="flex-1 bg-white border-2 border-gray-300 text-[#1A202C] px-6 py-3 rounded-lg hover:bg-gray-50 transition-all font-medium flex items-center justify-center gap-2 h-[48px]"
-            >
-              <Download size={20} />
-              Preview PDF
-            </button>
-            <button
-              onClick={sendProposal}
-              disabled={isSending}
-              className="flex-1 bg-gradient-to-r from-[#2EC4B6] to-[#26a599] text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all font-medium flex items-center justify-center gap-2 h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send size={20} />
-              {isSending ? 'Sending...' : 'Send Proposal'}
-            </button>
-          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="w-full bg-gradient-to-r from-[#2EC4B6] to-[#26a599] text-white px-6 py-3 rounded-lg hover:shadow-lg transition-all font-medium flex items-center justify-center gap-2 h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+            {isGenerating ? 'Generating...' : 'Generate & Save Draft'}
+          </button>
         </div>
       </div>
     </div>
