@@ -21,11 +21,18 @@ export function AdminDashboard() {
       setLoading(true);
       const [usersRes, requestsRes, agentsRes] = await Promise.all([
         api.get('/admin/users/pending'),
-        api.get('/requests'),
+        // FIX: Use params object to correctly encode 'Pending Triage'
+        api.get('/requests', { params: { status: 'Pending Triage' } }), 
         api.get('/admin/agents')
       ]);
+
       setPendingUsers(usersRes.data);
-      setPendingRequests(requestsRes.data);
+      
+      // FIX: Double-check filter on frontend to ensure only unassigned requests are shown
+      // This handles cases where backend might return all if param parsing fails
+      const unassignedOnly = requestsRes.data.filter((r: any) => r.status === 'Pending Triage');
+      setPendingRequests(unassignedOnly);
+      
       setAgentsList(agentsRes.data);
     } catch (error: any) {
       console.error("Dashboard Fetch Error:", error);
@@ -58,6 +65,7 @@ export function AdminDashboard() {
     try {
       await api.patch(`/requests/${requestId}/assign`, { agentId });
       toast.success("Agent assigned successfully");
+      // Remove from list immediately upon assignment
       setPendingRequests(prev => prev.filter(r => r.id !== requestId));
       const newAssignments = { ...selectedAssignments };
       delete newAssignments[requestId];
@@ -76,12 +84,10 @@ export function AdminDashboard() {
 
   return (
     <>
-      {/* Page Title */}
       <div className="mb-6">
         <p className="text-sm text-[#4A5568] mb-2">Admin Dashboard</p>
       </div>
 
-      {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="mb-1 text-[#1A202C]">Welcome back! 👋</h1>
         <p className="text-[#4A5568]">Here's what needs your attention today.</p>
@@ -116,7 +122,7 @@ export function AdminDashboard() {
               <Users size={20} className="text-[#4A5568]" />
             </div>
           </div>
-          <p className="text-3xl text-[#1A202C]">{loading ? '-' : agentsList.length}</p>
+          <p className="text-3xl text-[#1A202C]">{loading ? '-' : agentsList.filter((a: any) => a.status === 'Active').length}</p>
         </div>
       </div>
 

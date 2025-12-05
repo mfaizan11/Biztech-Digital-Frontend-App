@@ -35,6 +35,8 @@ import { AdminAgents } from './pages/AdminAgents';
 import { AdminRequests } from './pages/AdminRequests';
 import { AdminSettings } from './pages/AdminSettings';
 import { AdminServices } from './pages/AdminServices';
+import { AdminClients } from './pages/AdminClients';   // <-- New
+import { AdminProjects } from './pages/AdminProjects'; // <-- New
 
 export default function App() {
   return (
@@ -58,7 +60,7 @@ export default function App() {
               </ProtectedRoute>
             }>
               <Route path="/client-dashboard" element={<ClientDashboard />} />
-              <Route path="/my-documents" element={<MyDocuments />} />
+              <Route path="/my-documents" element={<Navigate to="/client-dashboard" replace />} />
               <Route path="/my-profile" element={<MyProfile />} />
               <Route path="/my-projects" element={<MyProjects />} />
               <Route path="/needs-assessment" element={<NeedsAssessment />} />
@@ -75,7 +77,7 @@ export default function App() {
               <Route path="/agent/clients" element={<AgentClients />} />
               <Route path="/agent/projects" element={<AgentProjects />} />
               <Route path="/agent/profile" element={<AgentProfile />} />
-              <Route path="/agent/proposal-builder" element={<ProposalBuilder />} />
+              <Route path="/agent/proposal-builder/:requestId" element={<ProposalBuilder />} />
               <Route path="/agent/project-management/:id" element={<AgentProjectManagement />} />
             </Route>
 
@@ -91,6 +93,8 @@ export default function App() {
               <Route path="/admin/services" element={<AdminServices />} />
               <Route path="/admin/requests" element={<AdminRequests />} />
               <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/clients" element={<AdminClients />} />   {/* <-- New */}
+              <Route path="/admin/projects" element={<AdminProjects />} /> {/* <-- New */}
             </Route>
 
             {/* Catch all */}

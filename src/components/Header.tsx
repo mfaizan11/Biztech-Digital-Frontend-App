@@ -22,13 +22,10 @@ export function Header({ variant = 'default' }: HeaderProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // If user is Agent or Admin, they use Sidebar, so we don't render this header
-  // (unless you specifically want a double header, but usually Sidebar replaces Header)
   if (user?.role === 'agent' || user?.role === 'admin') {
     return null;
   }
 
-  // Styles
   const headerClass = variant === 'transparent' 
     ? "bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50"
     : "bg-white border-b border-gray-200 sticky top-0 z-50";
@@ -57,10 +54,8 @@ export function Header({ variant = 'default' }: HeaderProps) {
           {/* === DESKTOP NAVIGATION === */}
           <nav className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 gap-4 lg:gap-6">
             {!isAuthenticated ? (
-              // Public Nav (Optional - add links if needed)
               <></> 
             ) : (
-              // Client Nav
               <>
                 <button onClick={() => navigate('/client-dashboard')} className={getLinkClass('/client-dashboard')}>
                   Dashboard
@@ -78,7 +73,6 @@ export function Header({ variant = 'default' }: HeaderProps) {
           {/* === RIGHT SIDE ACTIONS === */}
           <div className="flex items-center gap-3 z-10">
             {!isAuthenticated ? (
-              // Public Buttons
               <div className="hidden md:flex items-center gap-4">
                 <button
                   onClick={() => navigate('/login')}
@@ -94,7 +88,6 @@ export function Header({ variant = 'default' }: HeaderProps) {
                 </button>
               </div>
             ) : (
-              // Logged In Dropdown
               <DropdownMenu>
                 <DropdownMenuTrigger className="outline-none">
                   <div className="w-8 h-8 bg-[#0D1B2A] rounded-full flex items-center justify-center text-white text-sm font-medium cursor-pointer hover:bg-[#1a2d42] transition-colors">
