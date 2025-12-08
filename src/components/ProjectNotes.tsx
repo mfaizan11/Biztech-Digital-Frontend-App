@@ -29,7 +29,16 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Initial fetch
     fetchNotes();
+
+    // Set up polling to check for new messages every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchNotes(true); // pass true to indicate background update
+    }, 5000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, [projectId]);
 
   // Auto-scroll to bottom whenever notes change
@@ -39,14 +48,16 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
     }
   }, [notes]);
 
-  const fetchNotes = async () => {
+  const fetchNotes = async (isBackground = false) => {
     try {
       const res = await api.get(`/projects/${projectId}/notes`);
       setNotes(res.data);
     } catch (error) {
-      console.error("Failed to load notes");
+      if (!isBackground) {
+        console.error("Failed to load notes");
+      }
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   };
 
@@ -87,6 +98,7 @@ export function ProjectNotes({ projectId }: ProjectNotesProps) {
           </div>
         ) : (
           notes.map((note) => {
+            // Compare User Name or ID depending on available data
             const isMe = note.Author.fullName === user?.name; 
 
             return (
